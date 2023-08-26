@@ -3,4 +3,7 @@ authors = ["darashina"]
 language = "ja"
 multilingual = false
 src = "src"
-title = "Rust-cli Japanese"
+title = "Rustで作るコマンドラインアプリ"
+
+[build]
+build-dir = "docs"
