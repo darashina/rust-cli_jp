@@ -167,6 +167,185 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="より良いエラー報告"><a class="header" href="#より良いエラー報告">より良いエラー報告</a></h1>
+<p>私たちは、エラーが起こるという事実を受け入れるしかないのです。
+そして、他の多くの言語とは対照的に、
+Rustを使うときにこの現実に気づき、
+対処するのは非常に難しいことです：
+Rustには例外がないため、
+起こりうるすべてのエラー状態が、関数の戻り値の型にエンコードされていることが多いのです。</p>
+<h2 id="result型"><a class="header" href="#result型">Result型</a></h2>
+<p><a href="https://doc.rust-lang.org/1.39.0/std/fs/fn.read_to_string.html"><code>read_to_string</code></a>のような関数は、文字列を返しません。
+その代わり、<code>String</code>か何らかの型のエラー
+（この場合は <a href="https://doc.rust-lang.org/1.39.0/std/io/type.Result.html"><code>std::io::Error</code></a> ）
+を含む <a href="https://doc.rust-lang.org/1.39.0/std/result/index.html"><code>Result</code></a> 型を返します。</p>
+<p>どのようにそれがわかるのですか？
+<code>Result</code> 型は <code>enum</code> 型（列挙型）なので、
+<code>match</code> を使ってどの列挙子かを確認することができます：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+match result {
+    Ok(content) =&gt; { println!(&quot;File content: {}&quot;, content); }
+    Err(error) =&gt; { println!(&quot;Oh noes: {}&quot;, error); }
+}
+<span class="boring">}</span></code></pre></pre>
+<aside>
+<p><strong>注：</strong>
+Enumとは何か、Rustでどのように動作するのか、よくわからない？
+<a href="https://doc.rust-jp.rs/book-ja/ch06-00-enums.html">Rust bookのこの章</a>を読んで、
+スピードアップしてください。</p>
+</aside>
+<h2 id="アンラッピング"><a class="header" href="#アンラッピング">アンラッピング</a></h2>
+<p>さて、ファイルの内容にアクセスすることはできましたが、
+<code>match</code> ブロックの後では実際に何もすることができません。
+このため、エラーケースをどうにかして処理する必要があります。
+課題は、<code>match</code> ブロックのすべての分岐が同じ型のものを返す必要があることです。
+しかし、それを回避するための巧妙なトリックがあります：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+let content = match result {
+    Ok(content) =&gt; { content },
+    Err(error) =&gt; { panic!(&quot;Can't deal with {}, just exit here&quot;, error); }
+};
+println!(&quot;file content: {}&quot;, content);
+<span class="boring">}</span></code></pre></pre>
+<p>この例ではmatchブロックの後の <code>content</code> でStringを使用することができます。
+もし <code>result</code> がエラーだったら、Stringは存在しないことになります。
+しかし、<code>content</code> を使うところに到達する前にプログラムが終了してしまうので、問題ないでしょう。</p>
+<p>これは思い切ったように見えるかもしれませんが、
+とても便利な方法です。
+もしあなたのプログラムがそのファイルを読む必要があり、そのファイルが存在しなければ何もできないのであれば、
+プログラムの終了は有効な戦略です。
+<code>Results</code> には、<code>unwrap</code> というショートカットメソッドもあります：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let content = std::fs::read_to_string(&quot;test.txt&quot;).unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="panic-は不要"><a class="header" href="#panic-は不要">panic は不要</a></h2>
+<p>もちろん、プログラムを中断することだけがエラーへの対処法ではありません。
+<code>panic!</code> の代わりに、<code>return</code> を書くことも簡単にできます：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+let content = match result {
+    Ok(content) =&gt; { content },
+    Err(error) =&gt; { return Err(error.into()); }
+};
+<span class="boring">Ok(())
+</span><span class="boring">}</span></code></pre></pre>
+<p>しかし、これによって、この関数が必要とする戻り値の型が変わってしまいます。
+確かに、この例にはずっと何かが隠されていました：
+それは、このコードの関数シグネチャです。
+そして、この最後の <code>return</code> の例では、
+それが重要になります。
+以下はその <em>全例</em> です：</p>
+<pre><pre class="playground"><code class="language-rust no_run">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let result = std::fs::read_to_string(&quot;test.txt&quot;);
+    let content = match result {
+        Ok(content) =&gt; { content },
+        Err(error) =&gt; { return Err(error.into()); }
+    };
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre></pre>
+<p>戻り値の型は <code>Result</code> です！
+このため、2番目のマッチアームで <code>return Err(error);</code> と書くことができるのです。
+一番下に <code>Ok(())</code> があるのがわかりますか？
+これは関数のデフォルトの戻り値で、
+「ResultはOKで、中身はない」という意味です。</p>
+<aside>
+<p><strong>注：</strong>
+なぜ <code>return Ok(());</code> と書かないのでしょうか？
+簡単に書けますし、これも完全に正しいです。
+Rustのブロックの最後の式は戻り値であり、
+不要な <code>return</code> は省略するのが通例です。</p>
+</aside>
+<h2 id="クエスチョンマーク"><a class="header" href="#クエスチョンマーク">クエスチョンマーク</a></h2>
+<p><code>.unwrap()</code> を呼ぶことが、
+エラー分岐で <code>panic!</code> を使った <code>match</code> のショートカットであるように、
+エラー分岐で <code>return</code> を使った <code>match</code> のショートカット：<code>?</code> もあります。</p>
+<p>そうです、クエスチョンマークです。
+この演算子を <code>Result</code> 型の値に付加すると、
+Rustは内部的にこれを今書いた <code>match</code> と非常によく似たものに展開します。</p>
+<p>試してみてください。</p>
+<pre><pre class="playground"><code class="language-rust no_run">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let content = std::fs::read_to_string(&quot;test.txt&quot;)?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre></pre>
+<p>非常に簡潔です！</p>
+<aside>
+<p><strong>注：</strong>
+ここでさらにいくつかのことが起こっていますが、
+それを理解する必要はありません。
+例えば、
+私たちの <code>main</code> 関数でのエラータイプは <code>Box&lt;dyn std::error::Error&gt;</code> です。
+しかし、<code>read_to_string</code> が <a href="https://doc.rust-lang.org/1.39.0/std/io/type.Result.html"><code>std::io::Error</code></a> を返すことは上で見たとおりです。
+これは、<code>?</code>  がエラータイプを <em>変換</em> してコードを 展開するため、動作します。</p>
+<p><code>Box&lt;dyn std::error::Error&gt;</code> もまた興味深い型です。
+これは、標準的な <a href="https://doc.rust-lang.org/1.39.0/std/error/trait.Error.html"><code>Error</code></a> trait を実装する
+任意の型を含むことができる <code>Box</code> です。
+つまり、基本的にすべてのエラーをこのboxに入れることができるので、
+<code>Result</code> を返す通常の関数のすべてで <code>?</code> を使うことができます。</p>
+</aside>
+<h2 id="コンテキストの提供"><a class="header" href="#コンテキストの提供">コンテキストの提供</a></h2>
+<p><code>main</code> 関数で <code>?</code> を使ったときに出るエラーは大丈夫ですが、
+あまりいいものではありません。
+例えば：
+<code>std::fs::read_to_string(&quot;test.txt&quot;)?</code> を実行したが、
+ファイル <code>test.txt</code> が存在しない場合、
+次のような出力が得られます：</p>
+<pre><code class="language-text">Error: Os { code: 2, kind: NotFound, message: &quot;No such file or directory&quot; }
+</code></pre>
+<p>コードに文字通りファイル名が含まれていない場合、
+どのファイルが <code>NotFound</code> であったかを判断するのは非常に困難です。
+これに対処する方法は複数あります。</p>
+<p>例えば、独自のエラータイプを作成し、
+それを使って独自のエラーメッセージを作成することができます：</p>
+<pre><code class="language-rust ignore">#[derive(Debug)]
+struct CustomError(String);
+
+fn main() -&gt; Result&lt;(), CustomError&gt; {
+    let path = &quot;test.txt&quot;;
+    let content = std::fs::read_to_string(path)
+        .map_err(|err| CustomError(format!(&quot;Error reading `{}`: {}&quot;, path, err)))?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre>
+<p>さて、
+これを実行すると、独自のエラーメッセージが表示されます。</p>
+<pre><code class="language-text">Error: CustomError(&quot;Error reading `test.txt`: No such file or directory (os error 2)&quot;)
+</code></pre>
+<p>あまりきれいではありませんが、
+後で私たちの型に合わせたデバッグ出力を簡単に行うことができます。</p>
+<p>このパターンは、実はとてもよくあることなのです。
+しかし、ひとつ問題があります：
+オリジナルのエラーは保存されず、
+文字列表現のみが保存されるのです。
+よく使われる <a href="https://docs.rs/anyhow"><code>anyhow</code></a> ライブラリは、この問題を解決してくれます：
+<code>CustomError</code> 型と同様に、
+その <a href="https://docs.rs/anyhow/1.0/anyhow/trait.Context.html"><code>Context</code></a> trait を使って説明を追加することができるのです。
+さらに、このライブラリはオリジナルのエラーも保持するので、
+根本的な原因を示すエラーメッセージの「連鎖」を得ることができます。</p>
+<p>まず、<code>Cargo.toml</code> ファイルの
+<code>[dependencies]</code> セクションに <code>anyhow = &quot;1.0&quot;</code> を追加して、
+<code>anyhow</code> crate をインポートしましょう。</p>
+<p>すると、完全な例は次のようになります：</p>
+<pre><code class="language-rust ignore">use anyhow::{Context, Result};
+
+fn main() -&gt; Result&lt;()&gt; {
+    let path = &quot;test.txt&quot;;
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!(&quot;could not read file `{}`&quot;, path))?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre>
+<p>この場合、このようにエラーが表示されます：</p>
+<pre><code class="language-text">Error: could not read file `test.txt`
+
+Caused by:
+    No such file or directory (os error 2)
+</code></pre>
 
                     </main>
 

@@ -439,9 +439,455 @@ For more information try --help
 <aside class="exercise">
 <p><strong>練習問題：</strong>
 このプログラムに引数を出力させろ！</p>
-</aside><div style="break-before: page; page-break-before: always;"></div><h1 id="最初の実装"><a class="header" href="#最初の実装">最初の実装</a></h1>
+</aside><div style="break-before: page; page-break-before: always;"></div><h1 id="grrs-の最初の実装"><a class="header" href="#grrs-の最初の実装"><em>grrs</em> の最初の実装</a></h1>
+<p>「<a href="tutorial/./cli-args.html">コマンドライン引数のパース</a>」の章を終えて、
+入力データが揃ったので、
+実際のツールを書き始めることができるようになりました。
+私たちの <code>main</code> 関数には、今はこの行しかありません。</p>
+<pre><code class="language-rust ignore">    let args = Cli::parse();</code></pre>
+<p>まず、入手したファイルを開いてみましょう。</p>
+<pre><code class="language-rust ignore">    let content = std::fs::read_to_string(&amp;args.path).expect(&quot;could not read file&quot;);</code></pre>
+<aside>
+<p><strong>注：</strong>
+ここにある <a href="https://doc.rust-lang.org/1.39.0/std/result/enum.Result.html#method.expect"><code>.expect</code></a> メソッドを見てください。
+これは、値（この場合は入力ファイル）を読み込めなかったときに、
+プログラムを即座に終了させる <code>quit</code> のショートカット関数です。
+これはあまりきれいなものではありません。
+次の「<a href="tutorial/./errors.html">より良いエラー報告</a>」の章では、
+これを改善する方法について見ていきます。</p>
+</aside>
+<p>では、行を繰り返し、
+パターンを含む行をそれぞれ表示してみましょう。</p>
+<pre><code class="language-rust ignore">    for line in content.lines() {
+        if line.contains(&amp;args.pattern) {
+            println!(&quot;{}&quot;, line);
+        }
+    }</code></pre>
+<h2 id="まとめ-1"><a class="header" href="#まとめ-1">まとめ</a></h2>
+<p>これで、コードは次のようになります：</p>
+<pre><code class="language-rust ignore">#![allow(unused)]
+
+use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() {
+    let args = Cli::parse();
+    let content = std::fs::read_to_string(&amp;args.path).expect(&quot;could not read file&quot;);
+
+    for line in content.lines() {
+        if line.contains(&amp;args.pattern) {
+            println!(&quot;{}&quot;, line);
+        }
+    }
+}</code></pre>
+<p>試してみましょう： <code>cargo run -- main src/main.rs</code> はこれで動くはずです。</p>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+これはベストな実装とは言えません：
+どんなに大きなファイルでも、
+ファイル全体をメモリに読み込みます。
+最適化する方法を見つけてください！
+（一つのアイデアとして、 <code>read_to_string()</code> の代わりに
+<a href="https://doc.rust-lang.org/1.39.0/std/io/struct.BufReader.html"><code>BufReader</code></a>を使用することもできます）</p>
+</aside>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="より良いエラー報告"><a class="header" href="#より良いエラー報告">より良いエラー報告</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="人と機械のためのアウトプット"><a class="header" href="#人と機械のためのアウトプット">人と機械のためのアウトプット</a></h1>
+<p>私たちは、エラーが起こるという事実を受け入れるしかないのです。
+そして、他の多くの言語とは対照的に、
+Rustを使うときにこの現実に気づき、
+対処するのは非常に難しいことです：
+Rustには例外がないため、
+起こりうるすべてのエラー状態が、関数の戻り値の型にエンコードされていることが多いのです。</p>
+<h2 id="result型"><a class="header" href="#result型">Result型</a></h2>
+<p><a href="https://doc.rust-lang.org/1.39.0/std/fs/fn.read_to_string.html"><code>read_to_string</code></a>のような関数は、文字列を返しません。
+その代わり、<code>String</code>か何らかの型のエラー
+（この場合は <a href="https://doc.rust-lang.org/1.39.0/std/io/type.Result.html"><code>std::io::Error</code></a> ）
+を含む <a href="https://doc.rust-lang.org/1.39.0/std/result/index.html"><code>Result</code></a> 型を返します。</p>
+<p>どのようにそれがわかるのですか？
+<code>Result</code> 型は <code>enum</code> 型（列挙型）なので、
+<code>match</code> を使ってどの列挙子かを確認することができます：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+match result {
+    Ok(content) =&gt; { println!(&quot;File content: {}&quot;, content); }
+    Err(error) =&gt; { println!(&quot;Oh noes: {}&quot;, error); }
+}
+<span class="boring">}</span></code></pre></pre>
+<aside>
+<p><strong>注：</strong>
+Enumとは何か、Rustでどのように動作するのか、よくわからない？
+<a href="https://doc.rust-jp.rs/book-ja/ch06-00-enums.html">Rust bookのこの章</a>を読んで、
+スピードアップしてください。</p>
+</aside>
+<h2 id="アンラッピング"><a class="header" href="#アンラッピング">アンラッピング</a></h2>
+<p>さて、ファイルの内容にアクセスすることはできましたが、
+<code>match</code> ブロックの後では実際に何もすることができません。
+このため、エラーケースをどうにかして処理する必要があります。
+課題は、<code>match</code> ブロックのすべての分岐が同じ型のものを返す必要があることです。
+しかし、それを回避するための巧妙なトリックがあります：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+let content = match result {
+    Ok(content) =&gt; { content },
+    Err(error) =&gt; { panic!(&quot;Can't deal with {}, just exit here&quot;, error); }
+};
+println!(&quot;file content: {}&quot;, content);
+<span class="boring">}</span></code></pre></pre>
+<p>この例ではmatchブロックの後の <code>content</code> でStringを使用することができます。
+もし <code>result</code> がエラーだったら、Stringは存在しないことになります。
+しかし、<code>content</code> を使うところに到達する前にプログラムが終了してしまうので、問題ないでしょう。</p>
+<p>これは思い切ったように見えるかもしれませんが、
+とても便利な方法です。
+もしあなたのプログラムがそのファイルを読む必要があり、そのファイルが存在しなければ何もできないのであれば、
+プログラムの終了は有効な戦略です。
+<code>Results</code> には、<code>unwrap</code> というショートカットメソッドもあります：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let content = std::fs::read_to_string(&quot;test.txt&quot;).unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="panic-は不要"><a class="header" href="#panic-は不要">panic は不要</a></h2>
+<p>もちろん、プログラムを中断することだけがエラーへの対処法ではありません。
+<code>panic!</code> の代わりに、<code>return</code> を書くことも簡単にできます：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+</span>let result = std::fs::read_to_string(&quot;test.txt&quot;);
+let content = match result {
+    Ok(content) =&gt; { content },
+    Err(error) =&gt; { return Err(error.into()); }
+};
+<span class="boring">Ok(())
+</span><span class="boring">}</span></code></pre></pre>
+<p>しかし、これによって、この関数が必要とする戻り値の型が変わってしまいます。
+確かに、この例にはずっと何かが隠されていました：
+それは、このコードの関数シグネチャです。
+そして、この最後の <code>return</code> の例では、
+それが重要になります。
+以下はその <em>全例</em> です：</p>
+<pre><pre class="playground"><code class="language-rust no_run">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let result = std::fs::read_to_string(&quot;test.txt&quot;);
+    let content = match result {
+        Ok(content) =&gt; { content },
+        Err(error) =&gt; { return Err(error.into()); }
+    };
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre></pre>
+<p>戻り値の型は <code>Result</code> です！
+このため、2番目のマッチアームで <code>return Err(error);</code> と書くことができるのです。
+一番下に <code>Ok(())</code> があるのがわかりますか？
+これは関数のデフォルトの戻り値で、
+「ResultはOKで、中身はない」という意味です。</p>
+<aside>
+<p><strong>注：</strong>
+なぜ <code>return Ok(());</code> と書かないのでしょうか？
+簡単に書けますし、これも完全に正しいです。
+Rustのブロックの最後の式は戻り値であり、
+不要な <code>return</code> は省略するのが通例です。</p>
+</aside>
+<h2 id="クエスチョンマーク"><a class="header" href="#クエスチョンマーク">クエスチョンマーク</a></h2>
+<p><code>.unwrap()</code> を呼ぶことが、
+エラー分岐で <code>panic!</code> を使った <code>match</code> のショートカットであるように、
+エラー分岐で <code>return</code> を使った <code>match</code> のショートカット：<code>?</code> もあります。</p>
+<p>そうです、クエスチョンマークです。
+この演算子を <code>Result</code> 型の値に付加すると、
+Rustは内部的にこれを今書いた <code>match</code> と非常によく似たものに展開します。</p>
+<p>試してみてください。</p>
+<pre><pre class="playground"><code class="language-rust no_run">fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let content = std::fs::read_to_string(&quot;test.txt&quot;)?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre></pre>
+<p>非常に簡潔です！</p>
+<aside>
+<p><strong>注：</strong>
+ここでさらにいくつかのことが起こっていますが、
+それを理解する必要はありません。
+例えば、
+私たちの <code>main</code> 関数でのエラータイプは <code>Box&lt;dyn std::error::Error&gt;</code> です。
+しかし、<code>read_to_string</code> が <a href="https://doc.rust-lang.org/1.39.0/std/io/type.Result.html"><code>std::io::Error</code></a> を返すことは上で見たとおりです。
+これは、<code>?</code>  がエラータイプを <em>変換</em> してコードを 展開するため、動作します。</p>
+<p><code>Box&lt;dyn std::error::Error&gt;</code> もまた興味深い型です。
+これは、標準的な <a href="https://doc.rust-lang.org/1.39.0/std/error/trait.Error.html"><code>Error</code></a> trait を実装する
+任意の型を含むことができる <code>Box</code> です。
+つまり、基本的にすべてのエラーをこのboxに入れることができるので、
+<code>Result</code> を返す通常の関数のすべてで <code>?</code> を使うことができます。</p>
+</aside>
+<h2 id="コンテキストの提供"><a class="header" href="#コンテキストの提供">コンテキストの提供</a></h2>
+<p><code>main</code> 関数で <code>?</code> を使ったときに出るエラーは大丈夫ですが、
+あまりいいものではありません。
+例えば：
+<code>std::fs::read_to_string(&quot;test.txt&quot;)?</code> を実行したが、
+ファイル <code>test.txt</code> が存在しない場合、
+次のような出力が得られます：</p>
+<pre><code class="language-text">Error: Os { code: 2, kind: NotFound, message: &quot;No such file or directory&quot; }
+</code></pre>
+<p>コードに文字通りファイル名が含まれていない場合、
+どのファイルが <code>NotFound</code> であったかを判断するのは非常に困難です。
+これに対処する方法は複数あります。</p>
+<p>例えば、独自のエラータイプを作成し、
+それを使って独自のエラーメッセージを作成することができます：</p>
+<pre><code class="language-rust ignore">#[derive(Debug)]
+struct CustomError(String);
+
+fn main() -&gt; Result&lt;(), CustomError&gt; {
+    let path = &quot;test.txt&quot;;
+    let content = std::fs::read_to_string(path)
+        .map_err(|err| CustomError(format!(&quot;Error reading `{}`: {}&quot;, path, err)))?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre>
+<p>さて、
+これを実行すると、独自のエラーメッセージが表示されます。</p>
+<pre><code class="language-text">Error: CustomError(&quot;Error reading `test.txt`: No such file or directory (os error 2)&quot;)
+</code></pre>
+<p>あまりきれいではありませんが、
+後で私たちの型に合わせたデバッグ出力を簡単に行うことができます。</p>
+<p>このパターンは、実はとてもよくあることなのです。
+しかし、ひとつ問題があります：
+オリジナルのエラーは保存されず、
+文字列表現のみが保存されるのです。
+よく使われる <a href="https://docs.rs/anyhow"><code>anyhow</code></a> ライブラリは、この問題を解決してくれます：
+<code>CustomError</code> 型と同様に、
+その <a href="https://docs.rs/anyhow/1.0/anyhow/trait.Context.html"><code>Context</code></a> trait を使って説明を追加することができるのです。
+さらに、このライブラリはオリジナルのエラーも保持するので、
+根本的な原因を示すエラーメッセージの「連鎖」を得ることができます。</p>
+<p>まず、<code>Cargo.toml</code> ファイルの
+<code>[dependencies]</code> セクションに <code>anyhow = &quot;1.0&quot;</code> を追加して、
+<code>anyhow</code> crate をインポートしましょう。</p>
+<p>すると、完全な例は次のようになります：</p>
+<pre><code class="language-rust ignore">use anyhow::{Context, Result};
+
+fn main() -&gt; Result&lt;()&gt; {
+    let path = &quot;test.txt&quot;;
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!(&quot;could not read file `{}`&quot;, path))?;
+    println!(&quot;file content: {}&quot;, content);
+    Ok(())
+}</code></pre>
+<p>この場合、このようにエラーが表示されます：</p>
+<pre><code class="language-text">Error: could not read file `test.txt`
+
+Caused by:
+    No such file or directory (os error 2)
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="アウトプット"><a class="header" href="#アウトプット">アウトプット</a></h1>
+<h2 id="hello-world-の出力"><a class="header" href="#hello-world-の出力">&quot;Hello World&quot; の出力</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>println!(&quot;Hello World&quot;);
+<span class="boring">}</span></code></pre></pre>
+<p>まあ、簡単でしたね。
+では、次のトピックに移りましょう。</p>
+<h2 id="println-マクロを使う"><a class="header" href="#println-マクロを使う"><code>println!</code> マクロを使う</a></h2>
+<p><code>println!</code> マクロを使えば、
+かなり好きなように表示することができます。
+このマクロは非常に素晴らしい機能を持っていますが、
+特殊な構文も持っています。
+このマクロは、最初のパラメータとして、
+プレースホルダーを含む文字列リテラルを書くことを想定しており、
+プレースホルダーはその後に続くパラメータの値で埋められます。</p>
+<p>例えば、こんな感じです：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = 42;
+println!(&quot;My lucky number is {}.&quot;, x);
+<span class="boring">}</span></code></pre></pre>
+<p>これは、このように表示されます。</p>
+<pre><code class="language-console">My lucky number is 42.
+</code></pre>
+<p>上の文字列の中括弧（ <code>{}</code> ）は、プレースホルダーの一つで、
+与えられた値を人間が読めるように表示しようとするデフォルトのプレースホルダー型です。
+数値や文字列の場合、これは非常にうまく機能しますが、
+すべての型がそうできるわけではありません。
+このため、プレースホルダーの中括弧を
+<code>{:?}</code> のように埋めることで得られる「デバッグ表現」も用意されています。</p>
+<p>例えば、こんな感じです。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let xs = vec![1, 2, 3];
+println!(&quot;The list is: {:?}&quot;, xs);
+<span class="boring">}</span></code></pre></pre>
+<p>これは、このように表示されます。</p>
+<pre><code class="language-console">The list is: [1, 2, 3]
+</code></pre>
+<p>デバッグやログ用に独自のデータ型を出力したい場合は、
+ほとんどの場合、その定義の上に <code>#[derive(Debug)]</code> を追加することができます。</p>
+<aside>
+<p><strong>注：</strong>
+&quot;ユーザーフレンドリー &quot;な出力は <a href="https://doc.rust-lang.org/1.39.0/std/fmt/trait.Display.html"><code>Display</code></a> トレイトを使用し、
+デバッグ出力（人間が読めるが開発者向け）は <a href="https://doc.rust-lang.org/1.39.0/std/fmt/trait.Debug.html"><code>Debug</code></a> トレイトを使用します。
+<code>println!</code> で使用できる構文については、
+<a href="https://doc.rust-lang.org/1.39.0/std/fmt/index.html">std::fmt モジュールのドキュメント</a>でより多くの情報を得ることができます。</p>
+</aside>
+<h2 id="エラーの出力"><a class="header" href="#エラーの出力">エラーの出力</a></h2>
+<p>エラーの出力は、
+ユーザーや他のツールがファイルや他のツールに出力をパイプするのを容易にするために、
+<code>stderr</code> （標準エラー出力）を介して行われるべきです。</p>
+<aside>
+<p><strong>注：</strong>
+ほとんどのOSでは、
+プログラムは <code>stdout</code> と <code>stderr</code> という2つの出力ストリームに書き込むことができます。
+<code>stdout</code> はプログラムの実際の出力用で、
+<code>stderr</code> はエラーやその他のメッセージを <code>stdout</code> とは別に保持することができます。
+これにより、
+エラーはユーザーに表示しながら、出力をファイルに保存したり、
+他のプログラムへパイプで送ったりすることができます。</p>
+</aside>
+<p>Rustでは、<code>println!</code> と <code>eprintln!</code> でこれを実現し、
+前者は <code>stdout</code> に、
+後者は <code>stderr</code> に出力します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>println!(&quot;This is information&quot;);
+eprintln!(&quot;This is an error! :(&quot;);
+<span class="boring">}</span></code></pre></pre>
+<aside>
+<p><strong>注意点：</strong> <a href="https://en.wikipedia.org/wiki/ANSI_escape_code">エスケープコード</a> を出力すると、
+ユーザーのターミナル画面が変な状態になるなど、危険なことがあります。
+手動で出力する場合は、常に注意してください。</p>
+<p>理想的には、あなた（とあなたのユーザー）の生活を楽にするために、
+生のエスケープコードを扱うときは <code>ansi_term</code> のようなクレートを使用すべきです。</p>
+</aside>
+<h2 id="出力パフォーマンスに関する注意点"><a class="header" href="#出力パフォーマンスに関する注意点">出力パフォーマンスに関する注意点</a></h2>
+<p>ターミナル画面への出力は意外と遅い！
+<code>println!</code> などをループで呼び出すと、
+せっかく高速なプログラムでもボトルネックになりがちです。
+これを高速化するために、
+2つのことができます。</p>
+<p>まず、
+実際にターミナル画面を「書き換える」書き込みの数を減らした方がいいかもしれません。
+<code>println!</code> は、毎回ターミナル画面を書き換えるようにシステムに指示します。
+もしその必要がなければ、<code>stdout</code> ハンドルを <a href="https://doc.rust-lang.org/1.39.0/std/io/struct.BufWriter.html"><code>BufWriter</code></a> でラップすることができ、
+デフォルトで 8 kB までバッファリングできます。
+(すぐに印刷したい場合は、この <code>BufWriter</code> に対して <code>.flush()</code> を呼び出すことができます)。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::{self, Write};
+
+let stdout = io::stdout(); // グローバル stdout エンティティを取得
+let mut handle = io::BufWriter::new(stdout); // オプション： そのハンドルをバッファに格納
+writeln!(handle, &quot;foo: {}&quot;, 42); // エラーを気にする場合は、`?` を追加
+<span class="boring">}</span></code></pre></pre>
+<p>次に、
+<code>stdout</code> (または <code>stderr</code> )をロックし，
+<code>writeln!</code> を使って <code>stdout</code> に直接出力することが有効です。
+これにより、システムが何度も <code>stdout</code> をロックしたりアンロックしたりするのを防ぐことができます。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::{self, Write};
+
+let stdout = io::stdout(); // グローバル stdout エンティティを取得
+let mut handle = stdout.lock(); // そのハンドルをロックする
+writeln!(handle, &quot;foo: {}&quot;, 42); // エラーを気にする場合は、`?` を追加
+<span class="boring">}</span></code></pre></pre>
+<p>また、この2つのアプローチを組み合わせることも可能です。</p>
+<h2 id="プログレスバーの表示"><a class="header" href="#プログレスバーの表示">プログレスバーの表示</a></h2>
+<p>CLIアプリケーションの中には、1秒以内に動作するものもあれば、
+数分、数時間かかるものもあります。
+もしあなたが後者のタイプのプログラムを書いているならば、
+何かが起こっていることをユーザーに示したいと思うかもしれません。
+そのためには、有用なステータス更新状況を表示するようにすべきですが、
+それらは簡単に表示できる形式であることが理想的です。</p>
+<p><a href="https://crates.io/crates/indicatif">indicatif</a> クレートを使うと、
+プログレスバーや小さなスピナーをプログラムに追加することができます。
+以下に簡単な例を示します：</p>
+<pre><code class="language-rust ignore">fn main() {
+    let pb = indicatif::ProgressBar::new(100);
+    for i in 0..100 {
+        do_hard_work();
+        pb.println(format!(&quot;[+] finished #{}&quot;, i));
+        pb.inc(1);
+    }
+    pb.finish_with_message(&quot;done&quot;);
+}</code></pre>
+<p>詳しくは、
+<a href="https://docs.rs/indicatif">ドキュメント</a>
+と<a href="https://github.com/console-rs/indicatif/tree/main/examples">サンプル</a>
+をご覧ください。</p>
+<h2 id="ロギング"><a class="header" href="#ロギング">ロギング</a></h2>
+<p>プログラムで何が起こっているのかを理解しやすくするために、
+ログ文を追加したいと思うかもしれません。
+これは通常、アプリケーションを書いているときには簡単なことです。
+しかし、半年後にこのプログラムを再び実行するときには、とても役に立つでしょう。
+ある意味では、
+ロギングは <code>println!</code> を使うのと同じですが、
+メッセージの重要度を指定することができます。
+通常使用できるレベルは、<em>error</em> 、<em>warn</em> 、<em>info</em> 、<em>debug</em> 、<em>trace</em> です
+（ <em>error</em> が最も優先度が高く、<em>trace</em> が最も低い）。</p>
+<p>アプリケーションに簡単なロギングを追加するには、
+<a href="https://crates.io/crates/log">log</a> クレート（ログレベルにちなんだ名前のマクロを含む）と、
+実際にログ出力を有用な場所に書き出す <em>アダプタ</em> の2つが必要です。
+ログアダプタを使用するための機能は、非常に柔軟です：
+例えば、ターミナルだけでなく、<a href="https://en.wikipedia.org/wiki/Syslog">syslog</a> や中央ログサーバーにも
+ログを書き込むことができます。</p>
+<p>今はCLIアプリケーションを書くことしか考えていないので、
+使いやすいアダプタは <a href="https://crates.io/crates/env_logger">env_logger</a> になります。
+&quot;env&quot; ロガーと呼ばれるのは、
+環境変数を使ってアプリケーションのどの部分をログに記録するか
+（どのレベルで記録するか）を指定できるからです。
+また、ログメッセージの先頭にタイムスタンプとログメッセージの送信元モジュールを付加します。
+ライブラリも <code>log</code> を使うことができるので、
+そのログ出力も簡単に設定できます。</p>
+<p>簡単な例を挙げます：</p>
+<pre><code class="language-rust ignore">use log::{info, warn};
+
+fn main() {
+    env_logger::init();
+    info!(&quot;starting up&quot;);
+    warn!(&quot;oops, nothing implemented!&quot;);
+}</code></pre>
+<p>このファイルを <code>src/bin/output-log.rs</code> とすると、
+Linux と macOS では次のように実行できます：</p>
+<pre><code class="language-console">$ env RUST_LOG=info cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p>Windows PowerShell では、このように実行できます：</p>
+<pre><code class="language-console">$ $env:RUST_LOG=&quot;info&quot;
+$ cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log.exe`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p>Windows のコマンドプロンプトでは、次のように実行できます：</p>
+<pre><code class="language-console">$ set RUST_LOG=info
+$ cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log.exe`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p><code>RUST_LOG</code> は、ログ設定を行うために使用できる環境変数の名前です。
+<code>env_logger</code> にはビルダーも含まれているので、
+プログラムでこれらの設定を調整することができ、
+例えば、<em>info</em> レベルのメッセージをデフォルトで表示することもできます。</p>
+<p>ロギング・アダプターの代替品はたくさんあります、
+そしてまた、<code>log</code> の代替や拡張もあります。
+もし、あなたのアプリケーションが多くのログを記録することが分かっているのであれば、
+必ずそれらをレビューし、
+ユーザーの生活を楽にするようにしてください。</p>
+<aside>
+<p><strong>ヒント：</strong>
+経験上、多少便利なCLIプログラムであっても、何年も使い続けられることになります。
+(一時的な解決策のつもりだった場合は特に。) 
+アプリケーションが動作せず、
+そして誰か（例えば、将来のあなた）がその原因を突き止める必要がある場合、
+<code>--verbose</code> オプションを渡して追加のログ出力を得ることができれば、
+デバッグにかかる時間を数時間から数分に短縮することができます。
+<a href="https://crates.io/crates/clap-verbosity-flag">clap-verbosity-flag</a> クレートには、
+<code>clap</code> を使ってプロジェクトに <code>--verbose</code> を追加する簡単な方法が含まれています。</p>
+</aside>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="テスト"><a class="header" href="#テスト">テスト</a></h1>
 
                     </main>

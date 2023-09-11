@@ -166,7 +166,216 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="人と機械のためのアウトプット"><a class="header" href="#人と機械のためのアウトプット">人と機械のためのアウトプット</a></h1>
+                        <h1 id="アウトプット"><a class="header" href="#アウトプット">アウトプット</a></h1>
+<h2 id="hello-world-の出力"><a class="header" href="#hello-world-の出力">&quot;Hello World&quot; の出力</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>println!(&quot;Hello World&quot;);
+<span class="boring">}</span></code></pre></pre>
+<p>まあ、簡単でしたね。
+では、次のトピックに移りましょう。</p>
+<h2 id="println-マクロを使う"><a class="header" href="#println-マクロを使う"><code>println!</code> マクロを使う</a></h2>
+<p><code>println!</code> マクロを使えば、
+かなり好きなように表示することができます。
+このマクロは非常に素晴らしい機能を持っていますが、
+特殊な構文も持っています。
+このマクロは、最初のパラメータとして、
+プレースホルダーを含む文字列リテラルを書くことを想定しており、
+プレースホルダーはその後に続くパラメータの値で埋められます。</p>
+<p>例えば、こんな感じです：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = 42;
+println!(&quot;My lucky number is {}.&quot;, x);
+<span class="boring">}</span></code></pre></pre>
+<p>これは、このように表示されます。</p>
+<pre><code class="language-console">My lucky number is 42.
+</code></pre>
+<p>上の文字列の中括弧（ <code>{}</code> ）は、プレースホルダーの一つで、
+与えられた値を人間が読めるように表示しようとするデフォルトのプレースホルダー型です。
+数値や文字列の場合、これは非常にうまく機能しますが、
+すべての型がそうできるわけではありません。
+このため、プレースホルダーの中括弧を
+<code>{:?}</code> のように埋めることで得られる「デバッグ表現」も用意されています。</p>
+<p>例えば、こんな感じです。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let xs = vec![1, 2, 3];
+println!(&quot;The list is: {:?}&quot;, xs);
+<span class="boring">}</span></code></pre></pre>
+<p>これは、このように表示されます。</p>
+<pre><code class="language-console">The list is: [1, 2, 3]
+</code></pre>
+<p>デバッグやログ用に独自のデータ型を出力したい場合は、
+ほとんどの場合、その定義の上に <code>#[derive(Debug)]</code> を追加することができます。</p>
+<aside>
+<p><strong>注：</strong>
+&quot;ユーザーフレンドリー &quot;な出力は <a href="https://doc.rust-lang.org/1.39.0/std/fmt/trait.Display.html"><code>Display</code></a> トレイトを使用し、
+デバッグ出力（人間が読めるが開発者向け）は <a href="https://doc.rust-lang.org/1.39.0/std/fmt/trait.Debug.html"><code>Debug</code></a> トレイトを使用します。
+<code>println!</code> で使用できる構文については、
+<a href="https://doc.rust-lang.org/1.39.0/std/fmt/index.html">std::fmt モジュールのドキュメント</a>でより多くの情報を得ることができます。</p>
+</aside>
+<h2 id="エラーの出力"><a class="header" href="#エラーの出力">エラーの出力</a></h2>
+<p>エラーの出力は、
+ユーザーや他のツールがファイルや他のツールに出力をパイプするのを容易にするために、
+<code>stderr</code> （標準エラー出力）を介して行われるべきです。</p>
+<aside>
+<p><strong>注：</strong>
+ほとんどのOSでは、
+プログラムは <code>stdout</code> と <code>stderr</code> という2つの出力ストリームに書き込むことができます。
+<code>stdout</code> はプログラムの実際の出力用で、
+<code>stderr</code> はエラーやその他のメッセージを <code>stdout</code> とは別に保持することができます。
+これにより、
+エラーはユーザーに表示しながら、出力をファイルに保存したり、
+他のプログラムへパイプで送ったりすることができます。</p>
+</aside>
+<p>Rustでは、<code>println!</code> と <code>eprintln!</code> でこれを実現し、
+前者は <code>stdout</code> に、
+後者は <code>stderr</code> に出力します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>println!(&quot;This is information&quot;);
+eprintln!(&quot;This is an error! :(&quot;);
+<span class="boring">}</span></code></pre></pre>
+<aside>
+<p><strong>注意点：</strong> <a href="https://en.wikipedia.org/wiki/ANSI_escape_code">エスケープコード</a> を出力すると、
+ユーザーのターミナル画面が変な状態になるなど、危険なことがあります。
+手動で出力する場合は、常に注意してください。</p>
+<p>理想的には、あなた（とあなたのユーザー）の生活を楽にするために、
+生のエスケープコードを扱うときは <code>ansi_term</code> のようなクレートを使用すべきです。</p>
+</aside>
+<h2 id="出力パフォーマンスに関する注意点"><a class="header" href="#出力パフォーマンスに関する注意点">出力パフォーマンスに関する注意点</a></h2>
+<p>ターミナル画面への出力は意外と遅い！
+<code>println!</code> などをループで呼び出すと、
+せっかく高速なプログラムでもボトルネックになりがちです。
+これを高速化するために、
+2つのことができます。</p>
+<p>まず、
+実際にターミナル画面を「書き換える」書き込みの数を減らした方がいいかもしれません。
+<code>println!</code> は、毎回ターミナル画面を書き換えるようにシステムに指示します。
+もしその必要がなければ、<code>stdout</code> ハンドルを <a href="https://doc.rust-lang.org/1.39.0/std/io/struct.BufWriter.html"><code>BufWriter</code></a> でラップすることができ、
+デフォルトで 8 kB までバッファリングできます。
+(すぐに印刷したい場合は、この <code>BufWriter</code> に対して <code>.flush()</code> を呼び出すことができます)。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::{self, Write};
+
+let stdout = io::stdout(); // グローバル stdout エンティティを取得
+let mut handle = io::BufWriter::new(stdout); // オプション： そのハンドルをバッファに格納
+writeln!(handle, &quot;foo: {}&quot;, 42); // エラーを気にする場合は、`?` を追加
+<span class="boring">}</span></code></pre></pre>
+<p>次に、
+<code>stdout</code> (または <code>stderr</code> )をロックし，
+<code>writeln!</code> を使って <code>stdout</code> に直接出力することが有効です。
+これにより、システムが何度も <code>stdout</code> をロックしたりアンロックしたりするのを防ぐことができます。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::{self, Write};
+
+let stdout = io::stdout(); // グローバル stdout エンティティを取得
+let mut handle = stdout.lock(); // そのハンドルをロックする
+writeln!(handle, &quot;foo: {}&quot;, 42); // エラーを気にする場合は、`?` を追加
+<span class="boring">}</span></code></pre></pre>
+<p>また、この2つのアプローチを組み合わせることも可能です。</p>
+<h2 id="プログレスバーの表示"><a class="header" href="#プログレスバーの表示">プログレスバーの表示</a></h2>
+<p>CLIアプリケーションの中には、1秒以内に動作するものもあれば、
+数分、数時間かかるものもあります。
+もしあなたが後者のタイプのプログラムを書いているならば、
+何かが起こっていることをユーザーに示したいと思うかもしれません。
+そのためには、有用なステータス更新状況を表示するようにすべきですが、
+それらは簡単に表示できる形式であることが理想的です。</p>
+<p><a href="https://crates.io/crates/indicatif">indicatif</a> クレートを使うと、
+プログレスバーや小さなスピナーをプログラムに追加することができます。
+以下に簡単な例を示します：</p>
+<pre><code class="language-rust ignore">fn main() {
+    let pb = indicatif::ProgressBar::new(100);
+    for i in 0..100 {
+        do_hard_work();
+        pb.println(format!(&quot;[+] finished #{}&quot;, i));
+        pb.inc(1);
+    }
+    pb.finish_with_message(&quot;done&quot;);
+}</code></pre>
+<p>詳しくは、
+<a href="https://docs.rs/indicatif">ドキュメント</a>
+と<a href="https://github.com/console-rs/indicatif/tree/main/examples">サンプル</a>
+をご覧ください。</p>
+<h2 id="ロギング"><a class="header" href="#ロギング">ロギング</a></h2>
+<p>プログラムで何が起こっているのかを理解しやすくするために、
+ログ文を追加したいと思うかもしれません。
+これは通常、アプリケーションを書いているときには簡単なことです。
+しかし、半年後にこのプログラムを再び実行するときには、とても役に立つでしょう。
+ある意味では、
+ロギングは <code>println!</code> を使うのと同じですが、
+メッセージの重要度を指定することができます。
+通常使用できるレベルは、<em>error</em> 、<em>warn</em> 、<em>info</em> 、<em>debug</em> 、<em>trace</em> です
+（ <em>error</em> が最も優先度が高く、<em>trace</em> が最も低い）。</p>
+<p>アプリケーションに簡単なロギングを追加するには、
+<a href="https://crates.io/crates/log">log</a> クレート（ログレベルにちなんだ名前のマクロを含む）と、
+実際にログ出力を有用な場所に書き出す <em>アダプタ</em> の2つが必要です。
+ログアダプタを使用するための機能は、非常に柔軟です：
+例えば、ターミナルだけでなく、<a href="https://en.wikipedia.org/wiki/Syslog">syslog</a> や中央ログサーバーにも
+ログを書き込むことができます。</p>
+<p>今はCLIアプリケーションを書くことしか考えていないので、
+使いやすいアダプタは <a href="https://crates.io/crates/env_logger">env_logger</a> になります。
+&quot;env&quot; ロガーと呼ばれるのは、
+環境変数を使ってアプリケーションのどの部分をログに記録するか
+（どのレベルで記録するか）を指定できるからです。
+また、ログメッセージの先頭にタイムスタンプとログメッセージの送信元モジュールを付加します。
+ライブラリも <code>log</code> を使うことができるので、
+そのログ出力も簡単に設定できます。</p>
+<p>簡単な例を挙げます：</p>
+<pre><code class="language-rust ignore">use log::{info, warn};
+
+fn main() {
+    env_logger::init();
+    info!(&quot;starting up&quot;);
+    warn!(&quot;oops, nothing implemented!&quot;);
+}</code></pre>
+<p>このファイルを <code>src/bin/output-log.rs</code> とすると、
+Linux と macOS では次のように実行できます：</p>
+<pre><code class="language-console">$ env RUST_LOG=info cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p>Windows PowerShell では、このように実行できます：</p>
+<pre><code class="language-console">$ $env:RUST_LOG=&quot;info&quot;
+$ cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log.exe`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p>Windows のコマンドプロンプトでは、次のように実行できます：</p>
+<pre><code class="language-console">$ set RUST_LOG=info
+$ cargo run --bin output-log
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target/debug/output-log.exe`
+[2018-11-30T20:25:52Z INFO  output_log] starting up
+[2018-11-30T20:25:52Z WARN  output_log] oops, nothing implemented!
+</code></pre>
+<p><code>RUST_LOG</code> は、ログ設定を行うために使用できる環境変数の名前です。
+<code>env_logger</code> にはビルダーも含まれているので、
+プログラムでこれらの設定を調整することができ、
+例えば、<em>info</em> レベルのメッセージをデフォルトで表示することもできます。</p>
+<p>ロギング・アダプターの代替品はたくさんあります、
+そしてまた、<code>log</code> の代替や拡張もあります。
+もし、あなたのアプリケーションが多くのログを記録することが分かっているのであれば、
+必ずそれらをレビューし、
+ユーザーの生活を楽にするようにしてください。</p>
+<aside>
+<p><strong>ヒント：</strong>
+経験上、多少便利なCLIプログラムであっても、何年も使い続けられることになります。
+(一時的な解決策のつもりだった場合は特に。) 
+アプリケーションが動作せず、
+そして誰か（例えば、将来のあなた）がその原因を突き止める必要がある場合、
+<code>--verbose</code> オプションを渡して追加のログ出力を得ることができれば、
+デバッグにかかる時間を数時間から数分に短縮することができます。
+<a href="https://crates.io/crates/clap-verbosity-flag">clap-verbosity-flag</a> クレートには、
+<code>clap</code> を使ってプロジェクトに <code>--verbose</code> を追加する簡単な方法が含まれています。</p>
+</aside>
 
                     </main>
 

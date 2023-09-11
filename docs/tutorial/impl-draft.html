@@ -166,7 +166,65 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="最初の実装"><a class="header" href="#最初の実装">最初の実装</a></h1>
+                        <h1 id="grrs-の最初の実装"><a class="header" href="#grrs-の最初の実装"><em>grrs</em> の最初の実装</a></h1>
+<p>「<a href="./cli-args.html">コマンドライン引数のパース</a>」の章を終えて、
+入力データが揃ったので、
+実際のツールを書き始めることができるようになりました。
+私たちの <code>main</code> 関数には、今はこの行しかありません。</p>
+<pre><code class="language-rust ignore">    let args = Cli::parse();</code></pre>
+<p>まず、入手したファイルを開いてみましょう。</p>
+<pre><code class="language-rust ignore">    let content = std::fs::read_to_string(&amp;args.path).expect(&quot;could not read file&quot;);</code></pre>
+<aside>
+<p><strong>注：</strong>
+ここにある <a href="https://doc.rust-lang.org/1.39.0/std/result/enum.Result.html#method.expect"><code>.expect</code></a> メソッドを見てください。
+これは、値（この場合は入力ファイル）を読み込めなかったときに、
+プログラムを即座に終了させる <code>quit</code> のショートカット関数です。
+これはあまりきれいなものではありません。
+次の「<a href="./errors.html">より良いエラー報告</a>」の章では、
+これを改善する方法について見ていきます。</p>
+</aside>
+<p>では、行を繰り返し、
+パターンを含む行をそれぞれ表示してみましょう。</p>
+<pre><code class="language-rust ignore">    for line in content.lines() {
+        if line.contains(&amp;args.pattern) {
+            println!(&quot;{}&quot;, line);
+        }
+    }</code></pre>
+<h2 id="まとめ"><a class="header" href="#まとめ">まとめ</a></h2>
+<p>これで、コードは次のようになります：</p>
+<pre><code class="language-rust ignore">#![allow(unused)]
+
+use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() {
+    let args = Cli::parse();
+    let content = std::fs::read_to_string(&amp;args.path).expect(&quot;could not read file&quot;);
+
+    for line in content.lines() {
+        if line.contains(&amp;args.pattern) {
+            println!(&quot;{}&quot;, line);
+        }
+    }
+}</code></pre>
+<p>試してみましょう： <code>cargo run -- main src/main.rs</code> はこれで動くはずです。</p>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+これはベストな実装とは言えません：
+どんなに大きなファイルでも、
+ファイル全体をメモリに読み込みます。
+最適化する方法を見つけてください！
+（一つのアイデアとして、 <code>read_to_string()</code> の代わりに
+<a href="https://doc.rust-lang.org/1.39.0/std/io/struct.BufReader.html"><code>BufReader</code></a>を使用することもできます）</p>
+</aside>
 
                     </main>
 
