@@ -1,0 +1,401 @@
+<!DOCTYPE HTML>
+<html lang="ja" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>コマンドライン引数のパース - Rustで作るコマンドラインアプリ</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">はじめに</a></li><li class="chapter-item expanded "><a href="../tutorial/index.html"><strong aria-hidden="true">1.</strong> 15分でできるコマンドラインアプリ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../tutorial/setup.html"><strong aria-hidden="true">1.1.</strong> プロジェクト設定</a></li><li class="chapter-item expanded "><a href="../tutorial/cli-args.html" class="active"><strong aria-hidden="true">1.2.</strong> コマンドライン引数のパース</a></li><li class="chapter-item expanded "><a href="../tutorial/impl-draft.html"><strong aria-hidden="true">1.3.</strong> 最初の実装</a></li><li class="chapter-item expanded "><a href="../tutorial/errors.html"><strong aria-hidden="true">1.4.</strong> より良いエラー報告</a></li><li class="chapter-item expanded "><a href="../tutorial/output.html"><strong aria-hidden="true">1.5.</strong> 人と機械のためのアウトプット</a></li><li class="chapter-item expanded "><a href="../tutorial/testing.html"><strong aria-hidden="true">1.6.</strong> テスト</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Rustで作るコマンドラインアプリ</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="コマンドライン引数のパース"><a class="header" href="#コマンドライン引数のパース">コマンドライン引数のパース</a></h1>
+<p>CLIツールの典型的な呼び出しは次のようなものです：</p>
+<pre><code class="language-console">$ grrs foobar test.txt
+</code></pre>
+<p>このプログラムは、<code>test.txt</code> を見て、
+<code>foobar</code> を含む行をプリントアウトすることを期待しています。
+しかし、この2つの値はどのように取得するのでしょうか？</p>
+<p>プログラム名の後のテキストは、しばしば
+「コマンドライン引数」または
+「コマンドラインフラグ」
+（特に <code>--this</code> のように見える場合）
+と呼ばれます。
+大まかに言えば、それらはスペースで区切られているので、
+内部的には、オペレーティングシステムは通常、
+これらを文字列のリストとして表します。</p>
+<p>このような引数について、
+どのように解析して、
+より作業しやすいものにするかは、いろいろな考え方があります。
+また、プログラムの利用者に、
+どのような引数をどのような形式で与える必要があるかを伝える必要があります。</p>
+<h2 id="引数の取得"><a class="header" href="#引数の取得">引数の取得</a></h2>
+<p>標準ライブラリには、与えられた引数の<a href="https://doc.rust-lang.org/1.39.0/std/iter/index.html">イテレータ</a>を取得する関数
+<a href="https://doc.rust-lang.org/1.39.0/std/env/fn.args.html"><code>std::env::args()</code></a>が含まれています。
+最初のエントリ(インデックス <code>0</code> )は、あなたのプログラムが呼び出されたときの名前（例： <code>grrs</code> ）で、
+その後はユーザーがその後に書いたものが続きます。</p>
+<p>この方法で引数を取得するのは非常に簡単です（ファイル <code>src/main.rs</code> の <code>fn main() {</code> の後に以下を記述）：</p>
+<pre><code class="language-rust ignore">let pattern = std::env::args().nth(1).expect(&quot;no pattern given&quot;);
+let path = std::env::args().nth(2).expect(&quot;no path given&quot;);</code></pre>
+<h2 id="データ型としてのcli引数"><a class="header" href="#データ型としてのcli引数">データ型としてのCLI引数</a></h2>
+<p>CLI引数は、テキストの束として考えるのではなく、
+プログラムへの入力を表すカスタムデータ型と考えるのが得策です。</p>
+<p><code>grrs foobar test.txt</code> を見てください。
+引数は2つで、
+最初に <code>pattern</code>（探す文字列）、
+次に <code>path</code>（探すファイル）となっています。</p>
+<p>これ以上、何を語ればいいのでしょうか。
+まず第一に、これらは両方とも必須であるということです。
+デフォルトの値については何も話していないので、
+ユーザーは常に2つの値を提供することが期待されています。
+さらに、それらの型についても少し述べることができます：
+patternは文字列、
+2番目の引数はファイルへのパスです。</p>
+<p>Rustでは、扱うデータを中心にプログラムを構成するのが一般的なので、
+このCLI引数の見方はとてもしっくりきます。まず、こんなところから始めてみましょう
+（ファイル <code>src/main.rs</code> の、<code>fn main() {</code> の前に以下を記述）：</p>
+<pre><code class="language-rust ignore">struct Cli {
+    pattern: String,
+    path: std::path::PathBuf,
+}
+</code></pre>
+<p>これは、データを格納するための2つのフィールド（<code>pattern</code> と <code>path</code>）を持つ
+新しい構造体（<a href="https://doc.rust-lang.org/1.39.0/book/ch05-00-structs.html"><code>struct</code></a>）を定義するものです。</p>
+<aside>
+<p><strong>注：</strong>
+<a href="https://doc.rust-lang.org/1.39.0/std/path/struct.PathBuf.html"><code>PathBuf</code></a>は<a href="https://doc.rust-lang.org/1.39.0/std/string/struct.String.html"><code>String</code></a>のようなものですが、クロスプラットフォームで動作するファイルシステム・パス用のデータ型です。</p>
+</aside>
+<p>さて、私たちのプログラムが得た実際の引数をこのような形に変換する必要があります。
+選択肢の一つは、オペレーティングシステムから得た文字列のリストを手動で解析し、
+自分自身で構造を構築することです。
+それは以下のようなものになります：</p>
+<pre><code class="language-rust ignore">let pattern = std::env::args().nth(1).expect(&quot;no pattern given&quot;);
+let path = std::env::args().nth(2).expect(&quot;no path given&quot;);
+let args = Cli {
+    pattern: pattern,
+    path: std::path::PathBuf::from(path),
+};</code></pre>
+<p>これは動作しますが、あまり便利ではありません。
+<code>--pattern=&quot;foo&quot;</code> や <code>--pattern &quot;foo&quot;</code> をサポートする必要がある場合、
+どのように対処するのでしょうか？
+<code>--help</code> はどのように実装するのでしょうか？</p>
+<h2 id="clapを使ったcli引数のパース"><a class="header" href="#clapを使ったcli引数のパース">Clapを使ったCLI引数のパース</a></h2>
+<p>もっといい方法は、利用可能な多くのライブラリのうちの一つを使うことです。
+コマンドライン引数をパースするための最も一般的なライブラリは
+<a href="https://docs.rs/clap/"><code>clap</code></a>と呼ばれるものです。
+サブコマンドのサポート、<a href="https://docs.rs/clap_complete/">シェルの補完</a>、優れたヘルプメッセージなど、
+期待されるすべての機能を備えています。</p>
+<p>まず、<code>Cargo.toml</code> ファイルの <code>[dependencies]</code> セクションに
+<code>clap = { version = &quot;4.0&quot;, features = [&quot;derive&quot;] }</code> を追加して、
+<code>clap</code> をインポートしましょう。</p>
+<p>これで、コードに <code>use clap::Parser;</code> と書いて、
+<code>struct Cli</code> のすぐ上に <code>#[derive(Parser)]</code> を追加することができるようになりました。
+ついでにドキュメントのコメントも書いておきましょう。</p>
+<p>次のようになります（ファイル <code>src/main.rs</code> の <code>fn main() {</code> の前に以下を記述）：</p>
+<pre><code class="language-rust ignore">use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}</code></pre>
+<aside class="node">
+<p><strong>注：</strong>
+フィールドに追加できるカスタム属性はたくさんあります。
+例えば、
+<code>-o</code> や <code>--output</code> の後の引数にこのフィールドを使いたい場合は、
+<code>#[arg(short = 'o', long = &quot;output&quot;)]</code> と追加します。
+詳しくは、<a href="https://docs.rs/clap/">clapのドキュメント</a>をご覧ください。</p>
+</aside>
+<p><code>Cli</code> 構造体のすぐ下に、このテンプレートの <code>main</code> 関数があります。
+プログラムが開始されると、この関数が呼び出されます。
+最初の行は：</p>
+<pre><code class="language-rust ignore">fn main() {
+    let args = Cli::parse();
+}</code></pre>
+<p>これは、<code>Cli</code> 構造体に引数をパースしようとするものです。</p>
+<p>しかし、それが失敗したらどうするか？
+それがこの方法の良さです：
+Clapは、どのフィールドが必要で、
+どのような形式が必要なのかを知っています。
+また、<code>--help</code> メッセージを自動的に生成したり、
+間違えて <code>--putput</code> と書いたときに <code>--output</code> を渡すよう示唆するような
+素晴らしいエラーも出力してくれます。</p>
+<aside class="note">
+<p><strong>注：</strong>
+<code>parse</code> メソッドは、<code>main</code> 関数で使用することを想定しています。
+失敗した場合は、
+エラーメッセージやヘルプメッセージを出力し、直ちにプログラムを終了します。
+他の場所で使わないでください！</p>
+</aside>
+<h2 id="まとめ"><a class="header" href="#まとめ">まとめ</a></h2>
+<p>これで、コードは次のようになります：</p>
+<pre><code class="language-rust ignore">#![allow(unused)]
+
+use clap::Parser;
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Cli {
+    /// The pattern to look for
+    pattern: String,
+    /// The path to the file to read
+    path: std::path::PathBuf,
+}
+
+fn main() {
+    let args = Cli::parse();
+}</code></pre>
+<p>引数なしで実行するとこうなります：</p>
+<pre><code class="language-console">$ cargo run
+    Finished dev [unoptimized + debuginfo] target(s) in 10.16s
+     Running `target/debug/grrs`
+error: The following required arguments were not provided:
+    &lt;pattern&gt;
+    &lt;path&gt;
+
+USAGE:
+    grrs &lt;pattern&gt; &lt;path&gt;
+
+For more information try --help
+</code></pre>
+<p><code>cargo run</code> を直接使う場合は、<code>--</code> の後に引数を書けば、引数を渡すことができます：</p>
+<pre><code class="language-console">$ cargo run -- some-pattern some-file
+    Finished dev [unoptimized + debuginfo] target(s) in 0.11s
+     Running `target/debug/grrs some-pattern some-file`
+</code></pre>
+<p>ご覧の通り、
+出力はありません。
+これは良いことです：
+これは、エラーがなく、プログラムが終了したことを意味します。</p>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+このプログラムに引数を出力させろ！</p>
+</aside>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../tutorial/setup.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../tutorial/impl-draft.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../tutorial/setup.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../tutorial/impl-draft.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
