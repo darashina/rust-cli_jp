@@ -9,3 +9,4 @@
   - [より良いエラー報告](./tutorial/errors.md)
   - [人と機械のためのアウトプット](./tutorial/output.md)
   - [テスト](./tutorial/testing.md)
+  - [Rustツールのパッケージングと配布](./tutorial/packaging.md)
