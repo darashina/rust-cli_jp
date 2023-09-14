@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">はじめに</a></li><li class="chapter-item expanded "><a href="../tutorial/index.html"><strong aria-hidden="true">1.</strong> 15分でできるコマンドラインアプリ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../tutorial/setup.html"><strong aria-hidden="true">1.1.</strong> プロジェクト設定</a></li><li class="chapter-item expanded "><a href="../tutorial/cli-args.html"><strong aria-hidden="true">1.2.</strong> コマンドライン引数のパース</a></li><li class="chapter-item expanded "><a href="../tutorial/impl-draft.html"><strong aria-hidden="true">1.3.</strong> 最初の実装</a></li><li class="chapter-item expanded "><a href="../tutorial/errors.html"><strong aria-hidden="true">1.4.</strong> より良いエラー報告</a></li><li class="chapter-item expanded "><a href="../tutorial/output.html"><strong aria-hidden="true">1.5.</strong> 人と機械のためのアウトプット</a></li><li class="chapter-item expanded "><a href="../tutorial/testing.html" class="active"><strong aria-hidden="true">1.6.</strong> テスト</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">はじめに</a></li><li class="chapter-item expanded "><a href="../tutorial/index.html"><strong aria-hidden="true">1.</strong> 15分でできるコマンドラインアプリ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../tutorial/setup.html"><strong aria-hidden="true">1.1.</strong> プロジェクト設定</a></li><li class="chapter-item expanded "><a href="../tutorial/cli-args.html"><strong aria-hidden="true">1.2.</strong> コマンドライン引数のパース</a></li><li class="chapter-item expanded "><a href="../tutorial/impl-draft.html"><strong aria-hidden="true">1.3.</strong> 最初の実装</a></li><li class="chapter-item expanded "><a href="../tutorial/errors.html"><strong aria-hidden="true">1.4.</strong> より良いエラー報告</a></li><li class="chapter-item expanded "><a href="../tutorial/output.html"><strong aria-hidden="true">1.5.</strong> 人と機械のためのアウトプット</a></li><li class="chapter-item expanded "><a href="../tutorial/testing.html" class="active"><strong aria-hidden="true">1.6.</strong> テスト</a></li><li class="chapter-item expanded "><a href="../tutorial/packaging.html"><strong aria-hidden="true">1.7.</strong> Rustツールのパッケージングと配布</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -167,6 +167,424 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="テスト"><a class="header" href="#テスト">テスト</a></h1>
+<p>何十年にもわたるソフトウェア開発で、
+人々はひとつの真実を発見しました：
+&quot;テストされていないソフトウェアが機能することはめったにない&quot;。
+（多くの人はこう言うでしょう：
+&quot;ほとんどのテスト済みソフトウェアも機能しない&quot;。
+しかし、私たちは皆、楽観主義者でしょ？）
+だから、あなたのプログラムがあなたの期待通りに動くことを確認するためには、
+それをテストするのが賢明です。</p>
+<p>そのための簡単な方法の一つは、
+あなたのプログラムがどの様に動作するのかを記述した
+<code>README</code> ファイルを書くことです。
+そして、新しいリリースを作る準備ができたら、
+<code>README</code> に目を通し、
+その動作が期待通りであることを確認しましょう。
+誤った入力に対してプログラムがどのように反応するかも書いておくことで、
+これをより厳密な確認にすることもできます。</p>
+<p>もうひとつ、妙案があります：
+コードを書く前に <code>README</code> を書きましょう。</p>
+<aside>
+<p><strong>注：</strong>
+<a href="https://en.wikipedia.org/wiki/Test-driven_development">テスト駆動開発</a>（TDD）をご存じない方はご覧ください。</p>
+</aside>
+<h2 id="自動テスト"><a class="header" href="#自動テスト">自動テスト</a></h2>
+<p>しかし、これをすべて手作業でやるのは大変です。
+これにはかなりの時間がかかりますし、
+同時に、
+多くの人はコンピューターに指示を出すことを楽しむようになっています。
+これらのテストを自動化する方法について話しましょう。</p>
+<p>Rustにはテスト・フレームワークが組み込まれているので、
+まず最初のテストを書いてみましょう：</p>
+<pre><code class="language-rust ignore"><span class="boring">fn answer() -&gt; i32 {
+</span><span class="boring">  42
+</span><span class="boring">}
+</span><span class="boring">
+</span>#[test]
+fn check_answer_validity() {
+    assert_eq!(answer(), 42);
+}</code></pre>
+<p>このコードのスニペットをほとんどすべてのファイルに記述することができ、
+<code>cargo test</code> はそれを見つけて実行します。
+ここで重要なのは、<code>#[test]</code>  属性です。
+これにより、ビルドシステムがこのような関数を検出してテストとして実行し、
+パニックを起こさないことを確認します。</p>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+このテストを成功させてください。</p>
+<p>以下のような出力になるはずです：</p>
+<pre><code class="language-text">running 1 test
+test check_answer_validity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+</code></pre>
+</aside>
+<p>さて、テストの書き方について見てきましたが、
+今度は何をテストするのかを考えましょう。
+これまで見てきたように、関数に対するアサーションを書くのはとても簡単です。
+しかし、CLI アプリケーションは複数の関数から構成されることがよくあります！
+さらに悪いことに、ユーザーの入力を処理したり、
+ファイルを読み込んだり、
+出力を書き込んだりすることもよくあります。</p>
+<h2 id="コードをテスト可能にする"><a class="header" href="#コードをテスト可能にする">コードをテスト可能にする</a></h2>
+<p>機能性のテストには、2つの相補的なアプローチがあります：
+アプリケーション全体を構築するための、個々の小さな機能をテストすることは、
+「ユニットテスト」と呼ばれます。
+また、「ブラックボックステスト」や「統合テスト」と呼ばれる、
+最終的なアプリケーションを「外から」テストする方法もあります。
+まず、1つ目から始めましょう。</p>
+<p>何をテストすべきかを考えるために、
+プログラムの特徴を見てみましょう。
+主に、<code>grrs</code> は与えられたパターンにマッチする行をプリントアウトすることになっています。
+そこで、<em>まさにこのための</em> ユニットテストを書いてみましょう：
+ロジックの最も重要な部分が確実に機能するようにしたいですし、
+（例えばCLIの引数を扱うような）
+セットアップ・コードに依存しない方法でそれを実現したいです。</p>
+<p><code>grrs</code> の <a href="impl-draft.html">最初の実装</a> に戻ります、
+私たちは <code>main</code> 関数に次のコードブロックを書きました：</p>
+<pre><code class="language-rust ignore">// ...
+for line in content.lines() {
+    if line.contains(&amp;args.pattern) {
+        println!(&quot;{}&quot;, line);
+    }
+}</code></pre>
+<p>悲しいことに、これをテストするのはあまり簡単ではありません。
+まず、メイン関数の中にあるので、簡単に呼び出すことができません。
+これは、このコードを関数に移すことで簡単に解決できます：</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn find_matches(content: &amp;str, pattern: &amp;str) {
+    for line in content.lines() {
+        if line.contains(pattern) {
+            println!(&quot;{}&quot;, line);
+        }
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>では、この関数をテストで呼び出し、
+その出力を見てみましょう：</p>
+<pre><code class="language-rust ignore">#[test]
+fn find_a_match() {
+    find_matches(&quot;lorem ipsum\ndolor sit amet&quot;, &quot;lorem&quot;);
+    assert_eq!( // uhhhh</code></pre>
+<p>それとも...できるかな？
+今のところ、<code>find_matches</code> は <code>stdout</code> 、つまりターミナルに直接プリントします。
+テストではこれを簡単にキャプチャすることはできません！
+これは、実装後にテストを書くときによく出てくる問題です：
+私たちは、それが使用されるコンテクストにしっかりと組み込まれた関数を書きました。</p>
+<aside class="note">
+<p><strong>注：</strong>
+これは小さなCLIアプリケーションを書く場合には全く問題ありません。
+すべてをテスト可能にする必要はありません！
+しかし、コードのどの部分にユニットテストを書きたいかを考えることは重要です。
+この関数をテスト可能なものに変更するのは簡単ですが、
+常にそうであるとは限りません。</p>
+</aside>
+<p>さて、どうすればテスト可能になるでしょうか？
+どうにかして出力をキャプチャする必要があります。
+Rustの標準ライブラリには、
+I/O（入出力）を扱うための優れた抽象化機能がいくつかありますが、
+ここでは <a href="https://doc.rust-lang.org/1.39.0/std/io/trait.Write.html"><code>std::io::Write</code></a> と呼ばれるものを利用しましょう。
+これは、文字列や <code>stdout</code> など、
+書き込み可能なものを抽象化する <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">トレイト</a> です。</p>
+<p>Rustを学習する中で &quot;トレイト&quot; という言葉を耳にするのが初めてだとしたら、
+それは素晴らしいことです。
+トレイトはRustの最も強力な機能の1つです。
+Javaでいうところのインターフェイス、
+Haskell（あなたがより親しんでいる言語であれば何でもいいです）
+でいうところの型クラスのようなものだと思ってもらえばいいです。
+トレイトは異なる型で共有できる振る舞いを抽象化することができます。
+だから、トレイトを使用するコードは、
+非常に汎用的で柔軟な方法でアイデアを表現することができます。
+つまり、読むのが難しくなるということですが、
+それに怯える必要はありません：
+Rustを何年も使っている人でも、
+その汎用コードが何をするのかすぐに理解できるとは限りません。
+その場合、具体的な使い方を考えることが助けになります。
+例えば、
+私たちの場合、
+抽象化する動作は「それに書き込む」になります。
+これを実装（&quot;impl&quot;）した型の例としては、
+以下のようなものがあります：
+端末の標準出力、ファイル、メモリ上のバッファ、TCPネットワーク接続。
+( <a href="https://doc.rust-lang.org/1.39.0/std/io/trait.Write.html">std::io::Writeのドキュメント</a> を下にスクロールすると、
+&quot;インプリメンター&quot;のリストを見ることができます。)</p>
+<p>この知識をもとに、
+3番目のパラメータを受け取るように関数を変更してみましょう。
+このパラメータは、<code>Write</code> を実装する型であれば何でもかまいません。
+こうすれば、
+テストに単純な文字列を与えて、
+それに対してアサーションを行うことができます。
+このバージョンの <code>find_matches</code> は、以下のようになります：</p>
+<pre><code class="language-rust ignore">fn find_matches(content: &amp;str, pattern: &amp;str, mut writer: impl std::io::Write) {
+    for line in content.lines() {
+        if line.contains(pattern) {
+            writeln!(writer, &quot;{}&quot;, line);
+        }
+    }
+}</code></pre>
+<p>新しいパラメータは <code>mut writer</code> 、
+つまり私たちが &quot;ライター &quot;と呼ぶミュータブルなものです。
+その型は <code>impl std::io::Write</code> で、
+「 <code>Write トレイト</code> を実装するあらゆる型のプレースホルダー」
+と読むことができます。
+また、先ほど使った <code>println!(…)</code> を <code>writeln!(writer, …)</code> に
+置き換えたことにも注目してください。
+<code>println!</code> は <code>writeln!</code> と同じ働きをしますが、
+常に標準出力を使います。</p>
+<p>これで出力をテストできます：</p>
+<pre><code class="language-rust ignore">#[test]
+fn find_a_match() {
+    let mut result = Vec::new();
+    find_matches(&quot;lorem ipsum\ndolor sit amet&quot;, &quot;lorem&quot;, &amp;mut result);
+    assert_eq!(result, b&quot;lorem ipsum\n&quot;);
+}</code></pre>
+<p>アプリケーション・コードでこれを使うには、
+<code>main</code> の <code>find_matches</code> の呼び出しに、
+3番目のパラメータとして <a href="https://doc.rust-lang.org/1.39.0/std/io/fn.stdout.html"><code>&amp;mut std::io::stdout()</code></a> を追加する必要があります。
+以下は、前の章で見てきたことをベースに、
+抽出した <code>find_matches</code> 関数を使用したメイン関数の例になります：</p>
+<pre><code class="language-rust ignore">fn main() -&gt; Result&lt;()&gt; {
+    let args = Cli::parse();
+    let content = std::fs::read_to_string(&amp;args.path)
+        .with_context(|| format!(&quot;could not read file `{}`&quot;, args.path.display()))?;
+
+    find_matches(&amp;content, &amp;args.pattern, &amp;mut std::io::stdout());
+
+    Ok(())
+}</code></pre>
+<aside class="note">
+<p><strong>注：</strong>
+<code>stdout</code> は（文字列ではなく）バイトを想定しているので、
+<code>std::fmt::Write</code> の代わりに<code>std::io::Write</code> を使います。
+その結果、
+テストでは &quot;ライター &quot;として空のベクトルを与えており
+（その型は <code>Vec&lt;u8&gt;</code> と推論されます。）、
+<code>assert_eq!</code> では、<code>b&quot;foo&quot;</code> を使っています。
+（プレフィックスの <code>b</code> は、これを <em>バイト文字列リテラル</em> にするので、
+その型は <code>&amp;str</code> ではなく<code>&amp;[u8]</code> になります。）</p>
+</aside>
+<aside class="note">
+<p><strong>注：</strong>
+この関数を <code>String</code> を返すようにすることもできますが、
+そうすると動作が変わってしまいます。
+ターミナルに直接書き込む代わりに、
+すべてを文字列にして集め、
+最後にすべての結果をまとめてダンプする事になります。</p>
+</aside>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+<a href="https://doc.rust-lang.org/1.39.0/std/macro.writeln.html"><code>writeln!</code></a> は <a href="https://doc.rust-lang.org/1.39.0/std/io/type.Result.html"><code>io::Result</code></a> を返します。
+バッファが一杯で展開できない場合など、書き込みに失敗することがあるからです。
+<code>find_matches</code> にエラー処理を追加してください。</p>
+</aside>
+<p>私たちは、このコードを簡単にテスト可能にする方法を見てきました。
+私たちは</p>
+<ol>
+<li>私たちのアプリケーションの核となる部分を特定し、</li>
+<li>そのコードを関数の中に移し、</li>
+<li>そして、よりフレキシブルにしました。</li>
+</ol>
+<p>目標はテスト可能なものにすることだったにもかかわらず、
+最終的に出来上がったのは、
+非常にイディオム的で再利用可能なRustコードでした。
+すごいことです！</p>
+<h2 id="コードをライブラリとバイナリターゲットに分割する"><a class="header" href="#コードをライブラリとバイナリターゲットに分割する">コードをライブラリとバイナリ・ターゲットに分割する</a></h2>
+<p>ここでもうひとつ出来ることがあります。
+ここまでで、書いたものはすべて <code>src/main.rs</code> ファイルに入れました。
+つまり、現在のプロジェクトは単一のバイナリを生成するということです。
+しかし、次のようにコードをライブラリとして公開することもできます：</p>
+<ol>
+<li><code>find_matches</code> 関数を新規の <code>src/lib.rs</code> に記述します。</li>
+<li><code>fn</code> の前に <code>pub</code> を追加して（ <code>pub fn find_matches</code> となります）、
+ライブラリのユーザーがアクセスできるようにします。</li>
+<li><code>src/main.rs</code> から <code>find_matches</code> を削除します。</li>
+<li><code>fn main</code> の中で、<code>find_matches</code> の呼び出しの前に <code>grrs::</code> を付けて、
+<code>grrs::find_matches(...)</code> とします。
+つまり、先ほど書いたライブラリの関数を使うということです！</li>
+</ol>
+<p>Rustのプロジェクトの扱い方はかなり柔軟なので、
+早い段階でクレートのライブラリ部分に何を入れるか考えておくといいでしょう。
+例えば、アプリケーション固有のロジック用のライブラリを最初に書き、
+それを他のライブラリと同じようにCLIで使うことを考えることができます。
+あるいは、プロジェクトに複数のバイナリがある場合は、
+共通機能をそのクレートのライブラリ部分に入れることも出来ます。</p>
+<aside class="note">
+<p><strong>注：</strong>
+すべてを <code>src/main.rs</code> にまとめるといえば：
+このままでは読みづらくなってしまいます。
+<a href="https://doc.rust-lang.org/1.39.0/book/ch07-00-managing-growing-projects-with-packages-crates-and-modules.html">モジュール・システム</a> は、コードの構造化と整理に役立ちます。</p>
+</aside>
+<h2 id="cliアプリケーションの実行テスト"><a class="header" href="#cliアプリケーションの実行テスト">CLIアプリケーションの実行テスト</a></h2>
+<p>これまで、アプリケーションの <em>ビジネス・ロジック</em> をテストするために、
+わざわざ <code>find_matches</code> 関数をテストしてきました。
+これは非常に貴重であり、
+十分にテストされたコードベースへの素晴らしい第一歩です。
+（通常、この種のテストは「ユニットテスト」と呼ばれます。）</p>
+<p>しかし、テストしていないコードもたくさんあります：
+外部とやりとりするために書いたすべてのコードです！
+<code>main</code> 関数を書きましたが、
+ユーザーが指定したパスの引数を使わず、
+誤ってハードコーディングされた文字列を残してしまったとしましょう。
+そのためのテストも書くべきです！
+（このレベルのテストは、
+しばしば「統合テスト」あるいは「システムテスト」と呼ばれます。）</p>
+<p>基本的には、
+私たちはまだ関数を書いて、
+<code>#[test]</code> というアノテーションを付けています。
+問題は、これらの関数の中で何をするかということです。
+例えば、プロジェクトのメイン・バイナリを使って、
+普通のプログラムのように実行したいでしょう。
+また、これらのテストを新しいディレクトリの新しいファイル：<code>tests/cli.rs</code> に入れるでしょう。</p>
+<aside>
+<p><strong>注：</strong>
+慣習上、
+<code>cargo</code> は <code>tests/</code> ディレクトリにある統合テストを探します。
+同様に、
+ベンチマークを <code>benches/</code> に、
+例を <code>examples/</code> に探します。
+これらの慣習はメインのソースコードにも適用されます：
+ライブラリは <code>src/lib.rs</code> ファイルを持ち、
+メインバイナリは <code>src/main.rs</code> にあります。
+また、複数のバイナリがある場合、
+<code>cargo</code> はそれらが <code>src/bin/&lt;name&gt;.rs</code> にあると期待します。
+これらの慣習に従うことで、
+Rustのコードを読み慣れた人があなたのコードベースをより発見しやすくなります。</p>
+</aside>
+<p>思い起こせば、
+<code>grrs</code> はファイル内の文字列を検索する小さなツールです。
+マッチする文字列が見つかることは以前にテストしました。
+他にどんな機能をテストできるか考えてみましょう。</p>
+<p>私が考え出したものは、この様なものです。</p>
+<ul>
+<li>ファイルが存在しないときに何が起こりますか？</li>
+<li>マッチするものがないときに出力はどうなりますか？</li>
+<li>引数の一つ（または両方）を忘れたときに、エラーで終了しますか？</li>
+</ul>
+<p>これらはすべて有効なテストケースです。
+さらに、
+&quot;ハッピーパス&quot;のための一つのテストケースも含めるべきです。
+つまり、少なくとも一つのマッチを見つけて、
+それを出力するということです。</p>
+<p>このようなテストを簡単にするために、
+<a href="https://docs.rs/assert_cmd"><code>assert_cmd</code></a> クレートを使ってみましょう。
+メインのバイナリを実行して、
+その挙動を確認することができる、
+便利なヘルパーがたくさんあります。
+さらに、
+<a href="https://docs.rs/predicates"><code>predicates</code></a> クレートも追加します。
+それは <code>assert_cmd</code> がテストできる
+（そして素晴らしいエラーメッセージを持つ）
+アサーションを書くのに役立ちます。
+これらの依存関係をメインリストではなく、
+<code>Cargo.toml</code> の&quot;dev dependencies&quot;セクションに追加します。
+それらはクレートを使うときではなく、
+開発するときにだけ必要です。</p>
+<pre><code class="language-toml">[dev-dependencies]
+assert_cmd = &quot;2.0.12&quot;
+predicates = &quot;3.0.3&quot;
+</code></pre>
+<p>セットアップが大変そうです。
+それでも、
+さっそく <code>tests/cli.rs</code> ファイルを作ってみましょう：</p>
+<pre><code class="language-rust ignore">use assert_cmd::prelude::*; // Add methods on commands
+use predicates::prelude::*; // Used for writing assertions
+use std::process::Command; // Run programs
+
+#[test]
+fn file_doesnt_exist() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let mut cmd = Command::cargo_bin(&quot;grrs&quot;)?;
+
+    cmd.arg(&quot;foobar&quot;).arg(&quot;test/file/doesnt/exist&quot;);
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains(&quot;could not read file&quot;));
+
+    Ok(())
+}</code></pre>
+<p>このテストは、上で書いたテストと同じように、
+<code>cargo test</code> で実行できます。
+<code>Command::cargo_bin(“grrs”)</code> がメインバイナリをコンパイルする必要があるため、
+最初の一回は少し時間がかかるかもしれません。</p>
+<h2 id="テストファイルの生成"><a class="header" href="#テストファイルの生成">テストファイルの生成</a></h2>
+<p>今見てきたテストは、入力ファイルが存在しないときに、
+プログラムがエラーメッセージを出力するかどうかだけをチェックしています。
+それは重要なテストですが、
+最も重要なものではないかもしれません：
+今度は、ファイルの中で見つけたマッチを実際に出力するかどうかをテストしてみましょう！</p>
+<p>内容が分かっているファイルが必要です。
+そうすれば、プログラムが <em>何を返すべきか</em> を知ることができ、
+コードの中でこの期待値をチェックできます。
+一つのアイデアとして、カスタムコンテンツを持つファイルをプロジェクトに追加して、
+それをテストに使うという方法があります。
+もう一つは、テストの中で一時ファイルを作るという方法です。
+このチュートリアルでは、
+後者の方法を見ていきます。
+主に、より柔軟性があり、他の場合にも使えるからです；
+例えば、ファイルを変更するプログラムをテストするときなどです。</p>
+<p>これらの一時ファイルを作るために、
+<a href="https://docs.rs/assert_fs"><code>assert_fs</code></a> というクレートを使います。
+<code>Cargo.toml</code> の <code>dev-dependencies</code> に追加しましょう：</p>
+<pre><code class="language-toml">assert_fs = &quot;1.0.13&quot;
+</code></pre>
+<p>ここに新しいテストケース
+（他のテストケースの下に書くことができます）を書くと、
+まずテンポラリファイル
+（パスを取得できるように&quot;名前付き&quot;のもの）を作成し、
+そこにテキストを書き込んでから、
+プログラムを実行して正しい出力が得られるかどうかを確認します。
+<code>ファイル</code> がスコープから外れると
+（関数の最後で）、
+実際の一時ファイルは自動的に削除されます。</p>
+<pre><code class="language-rust ignore">use assert_fs::prelude::*;
+
+#[test]
+fn find_content_in_file() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let file = assert_fs::NamedTempFile::new(&quot;sample.txt&quot;)?;
+    file.write_str(&quot;A test\nActual content\nMore content\nAnother test&quot;)?;
+
+    let mut cmd = Command::cargo_bin(&quot;grrs&quot;)?;
+    cmd.arg(&quot;test&quot;).arg(file.path());
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains(&quot;A test\nAnother test&quot;));
+
+    Ok(())
+}</code></pre>
+<aside class="exercise">
+<p><strong>練習問題：</strong>
+パターンとして空文字列を渡すための統合テストを追加してください。
+必要に応じてプログラムを調整してください。</p>
+</aside>
+<h2 id="何をテストすべきか"><a class="header" href="#何をテストすべきか">何をテストすべきか？</a></h2>
+<p>統合テストを書くのは確かに楽しいことですが、
+それには時間がかかりますし、
+アプリケーションの振る舞いが変わったときに更新する必要もあります。
+時間を賢く使うために、
+何をテストすべきか自問自答してみるべきです。</p>
+<p>一般的には、ユーザーが観察できるすべてのタイプの動作について
+統合テストを書くのがよいでしょう。
+つまり、すべてのエッジケースをカバーする必要はありません：
+通常は、さまざまなタイプの例を用意して、
+エッジケースはユニットテストに任せるだけで十分です。</p>
+<p>また、自分で積極的に制御できないことにテストの焦点を当てないのも良い考えです。
+<code>–help</code> の正確なレイアウトをテストするのは得策ではありません。
+なぜなら、それはあなたのために生成されるものだからです。
+代わりに、特定の要素が存在するかどうかをチェックするだけでよいでしょう。</p>
+<p>プログラムの性質によっては、
+他のテスト技法も試してみることができます。
+例えば、
+プログラムの一部を抽出して、
+エッジケースを考え出そうとしながらユニットテストとして多くの例を書いている場合は、
+<a href="https://docs.rs/proptest"><code>proptest</code></a> を調べてみるべきです。
+任意のファイルを消費して解析するプログラムがある場合は、
+エッジケースでバグを見つけるために <a href="https://rust-fuzz.github.io/book/introduction.html">fuzzer</a> を書いてみるとよいでしょう。</p>
+<aside>
+<p><strong>注：</strong>
+この章で使った完全で実行可能なソースコードは、
+<a href="https://github.com/darashina/rust-cli_jp/tree/main/src/tutorial/testing">本書のリポジトリ</a> にあります。</p>
+</aside>
 
                     </main>
 
@@ -176,6 +594,9 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
+                            <a rel="next" href="../tutorial/packaging.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -187,6 +608,9 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
+                    <a rel="next" href="../tutorial/packaging.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
             </nav>
 
         </div>
